@@ -7,6 +7,7 @@ import Sidebar from '../components/Sidebar'
 import ThemeToggle from '../components/ThemeToggle'
 import ProfileDropdown from '../components/ProfileDropdown'
 import LpsDonut from '../components/LpsDonut'
+import useSocketStore from '../stores/socketStore'
 
 // Simple reusable bar chart using pure SVG
 function LpsBarChart({ distribution, maxStudents }) {
@@ -103,8 +104,10 @@ function AnalyticsDashboard() {
   const [studentMetrics, setStudentMetrics] = useState([])
   const [loading, setLoading] = useState(false)
   const [checked, setChecked] = useState(false)
+  const [refreshTrigger, setRefreshTrigger] = useState(0)
 
   const isTeacher = user?.role === 'teacher'
+  const socket = useSocketStore(state => state.socket)
 
   useEffect(() => {
     if (token) {
@@ -125,7 +128,29 @@ function AnalyticsDashboard() {
     }
   }, [rooms])
 
-  // Fetch analytics when room changes
+  // Socket listener for real-time updates
+  useEffect(() => {
+    if (!socket || !selectedRoomId || !rooms?.length) return
+
+    const selectedRoom = rooms.find(r => r._id === selectedRoomId)
+    if (!selectedRoom?.code) return
+
+    const handleUpdate = () => {
+      setRefreshTrigger(prev => prev + 1)
+    }
+
+    socket.on('points:updated', handleUpdate)
+    socket.on('response:new', handleUpdate)
+    socket.on('question:ended', handleUpdate)
+
+    return () => {
+      socket.off('points:updated', handleUpdate)
+      socket.off('response:new', handleUpdate)
+      socket.off('question:ended', handleUpdate)
+    }
+  }, [socket, selectedRoomId, rooms])
+
+  // Fetch analytics when room changes or updates are received
   useEffect(() => {
     if (!selectedRoomId || !token) return
     const fetchData = async () => {
@@ -186,7 +211,7 @@ function AnalyticsDashboard() {
       }
     }
     fetchData()
-  }, [selectedRoomId, token])
+  }, [selectedRoomId, token, refreshTrigger])
 
   const avgLps = classStats?.average || (studentMetrics.length === 1 ? studentMetrics[0]?.lps : 0) || 0
 
