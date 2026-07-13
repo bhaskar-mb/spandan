@@ -15,13 +15,20 @@ const getModel = async (name) => {
 export const calculateAttendance = async (studentId, roomId) => {
   const Transcript = await getModel('Transcript');
   const Response = await getModel('Response');
+  const Question = await getModel('Question');
   // Total distinct segments for the room
-  const totalSegments = await Transcript.distinct('segmentIndex', { roomId: mongoose.Types.ObjectId(roomId) });
+  const totalSegments = await Transcript.distinct('segmentIndex', { roomId: new mongoose.Types.ObjectId(roomId) });
   if (totalSegments.length === 0) return 0;
-  // Segments where the student submitted at least one response
-  const attendedSegments = await Response.distinct('segmentIndex', {
-    studentId: mongoose.Types.ObjectId(studentId),
-    roomId: mongoose.Types.ObjectId(roomId)
+  // Get all questionIds the student answered in this room
+  const studentResponses = await Response.find({
+    studentId: new mongoose.Types.ObjectId(studentId),
+    roomId: new mongoose.Types.ObjectId(roomId)
+  }).lean();
+  if (studentResponses.length === 0) return 0;
+  const questionIds = studentResponses.map(r => r.questionId);
+  // Get distinct segmentIndexes of those answered questions
+  const attendedSegments = await Question.distinct('segmentIndex', {
+    _id: { $in: questionIds }
   });
   const attendance = attendedSegments.length / totalSegments.length;
   return attendance; // range 0-1
