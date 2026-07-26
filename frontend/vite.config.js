@@ -9,8 +9,25 @@ export default defineConfig(({ mode }) => {
   const apiPath = formattedBasePath ? formattedBasePath + '/api' : '/api'
   const socketPath = formattedBasePath ? formattedBasePath + '/socket.io' : '/socket.io'
 
+  // Redirect /spandan -> /spandan/ so users don't see the raw Vite base-path warning
+  const baseRedirectPlugin = () => ({
+    name: 'base-redirect',
+    configureServer(server) {
+      if (formattedBasePath) {
+        server.middlewares.use((req, res, next) => {
+          if (req.url === formattedBasePath) {
+            res.writeHead(302, { Location: formattedBasePath + '/' });
+            res.end();
+            return;
+          }
+          next();
+        });
+      }
+    }
+  });
+
   return {
-    plugins: [react()],
+    plugins: [baseRedirectPlugin(), react()],
     root: '.',
     base: formattedBasePath ? formattedBasePath + '/' : './',
     build: {
