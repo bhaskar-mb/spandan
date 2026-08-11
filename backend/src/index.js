@@ -727,18 +727,26 @@ const connectDB = async () => {
   }
 }
 
-const PORT = process.env.PORT || 3001
-
-// Start server
-const startServer = async () => {
-  await connectDB()
-  
-  httpServer.listen(PORT, () => {
-    console.log(`Spandan backend v0.5 running on port ${PORT}`)
-    console.log(`Environment: ${process.env.NODE_ENV || 'development'}`)
-  })
+let dbPromise = null
+export const ensureDbConnected = async () => {
+  if (mongoose.connection.readyState === 1) return
+  if (!dbPromise) {
+    dbPromise = connectDB()
+  }
+  await dbPromise
 }
 
-startServer().catch(console.error)
+// Start server (only in non-serverless environment)
+if (process.env.VERCEL !== '1') {
+  const PORT = process.env.PORT || 3001
+  const startServer = async () => {
+    await connectDB()
+    httpServer.listen(PORT, () => {
+      console.log(`Spandan backend v0.5 running on port ${PORT}`)
+      console.log(`Environment: ${process.env.NODE_ENV || 'development'}`)
+    })
+  }
+  startServer().catch(console.error)
+}
 
 export { app, io }
