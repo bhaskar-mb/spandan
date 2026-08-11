@@ -1,5 +1,11 @@
 import mongoose from 'mongoose'
-import bcrypt from 'bcryptjs'
+// @node-rs/bcrypt is a Rust implementation whose hash/compare run on libuv's background
+// thread pool, so password hashing no longer blocks the single event loop during login
+// storms. Output is standard bcrypt and cross-compatible with the previous bcryptjs
+// hashes, so existing passwords keep working (no reset needed).
+import { hash, compare } from '@node-rs/bcrypt'
+
+const BCRYPT_COST = Number(process.env.BCRYPT_COST) || 10
 
 const userSchema = new mongoose.Schema({
   name: {
@@ -26,6 +32,34 @@ const userSchema = new mongoose.Schema({
     type: String,
     enum: ['teacher', 'student'],
     required: [true, 'Role is required']
+  },
+  // Teacher accounts must be approved by an admin before they can sign in or use any
+  // teacher functionality. Students are 'approved' by default (the field is only
+  // consulted when role === 'teacher'). New teacher registrations start 'pending'.
+  teacherApprovalStatus: {
+    type: String,
+    enum: ['pending', 'approved', 'rejected'],
+    default: 'pending'
+  },
+  // Grants access to the admin approval page and endpoints. Set only via the migration
+  // script or another admin; never client-settable.
+  isAdmin: {
+    type: Boolean,
+    default: false
+  },
+  approvedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: null
+  },
+  approvedAt: {
+    type: Date,
+    default: null
+  },
+  rejectionReason: {
+    type: String,
+    default: '',
+    maxlength: [500, 'Rejection reason cannot exceed 500 characters']
   },
   profileImage: {
     type: String,
@@ -100,8 +134,7 @@ userSchema.pre('save', async function(next) {
   if (!this.isModified('password')) return next()
   
   try {
-    const salt = await bcrypt.genSalt(10)
-    this.password = await bcrypt.hash(this.password, salt)
+    this.password = await hash(this.password, BCRYPT_COST)
     next()
   } catch (error) {
     next(error)
@@ -110,7 +143,7 @@ userSchema.pre('save', async function(next) {
 
 // Compare password method
 userSchema.methods.comparePassword = async function(candidatePassword) {
-  return bcrypt.compare(candidatePassword, this.password)
+  return compare(candidatePassword, this.password)
 }
 
 // Remove password from JSON output
