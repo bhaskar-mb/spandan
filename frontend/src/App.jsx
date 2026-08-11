@@ -19,7 +19,7 @@ import ProfilePage from './pages/ProfilePage'
 import AnalyticsDashboard from './pages/AnalyticsDashboard'
 import HelpPage from './pages/HelpPage'
 import AdminPage from './pages/AdminPage'
-import { API_URL } from './config.js'
+import { API_URL, BASE_PATH } from './config.js'
 import { isTokenExpired } from './lib/jwt.js'
 
 function App() {
@@ -94,7 +94,7 @@ function App() {
 
         // Open dashboard in new tab
         const dashboard = spandanData.user.role === 'teacher' ? '/teacher' : '/student'
-        const redirectUrl = `${window.location.origin}/spandan${dashboard}`
+        const redirectUrl = `${window.location.origin}${BASE_PATH}${dashboard}`
         console.log('[Spandan] Opening dashboard:', redirectUrl)
         window.open(redirectUrl, '_blank')
       } catch (error) {
@@ -134,7 +134,7 @@ function App() {
   }, [isDark])
 
   return (
-    <BrowserRouter basename="/spandan">
+    <BrowserRouter basename={BASE_PATH}>
       <Routes>
         <Route path="/" element={<AuthPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
