@@ -9,7 +9,7 @@ export default defineConfig(({ mode }) => {
   // /spandan/student/session/XXXX) broke with a "MIME type text/html" error because relative
   // asset URLs resolved to a nested path nginx served index.html for. loadEnv fixes it.
   const env = loadEnv(mode, process.cwd(), '')
-  const rawBase = process.env.VITE_BASE_PATH || env.VITE_BASE_PATH || ''
+  const rawBase = ('VITE_BASE_PATH' in process.env) ? process.env.VITE_BASE_PATH : (env.VITE_BASE_PATH || '')
   const formattedBasePath = rawBase ? '/' + rawBase.replace(/^\//, '').replace(/\/+$/, '') : ''
 
   const base = formattedBasePath ? formattedBasePath + '/' : './'
