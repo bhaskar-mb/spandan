@@ -7,7 +7,7 @@ import useRoomStore from '../stores/roomStore'
 import Sidebar from '../components/Sidebar'
 import ThemeToggle from '../components/ThemeToggle'
 import ProfileDropdown from '../components/ProfileDropdown'
-import { API_URL } from '../config.js'
+import RandomQuestionModal from '../components/RandomQuestionModal.jsx'
 
 function StudentDashboard() {
   const navigate = useNavigate()
@@ -103,6 +103,7 @@ function StudentDashboard() {
       fontFamily: '"Segoe UI", Tahoma, Geneva, Verdana, sans-serif'
     }}>
       <Sidebar user={user} />
+      <RandomQuestionModal />
       
       {/* Main Content */}
       <div style={{

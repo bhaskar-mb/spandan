@@ -1,13 +1,14 @@
-import React, { useState, useEffect } from 'react'
-import LpsDonut from '../components/LpsDonut.jsx'
-import { useNavigate } from 'react-router-dom'
-import { API_URL } from '../config.js'
-import useAuthStore from '../stores/authStore'
-import useRoomStore from '../stores/roomStore'
-import useSocketStore from '../stores/socketStore'
-import Sidebar from '../components/Sidebar'
-import ThemeToggle from '../components/ThemeToggle'
-import ProfileDropdown from '../components/ProfileDropdown'
+import React, { useState, useEffect } from 'react';
+import { useSocketStore } from '../stores/socketStore';
+import LpsDonut from '../components/LpsDonut.jsx';
+import { useNavigate } from 'react-router-dom';
+import { API_URL } from '../config.js';
+import useAuthStore from '../stores/authStore';
+import useRoomStore from '../stores/roomStore';
+import Sidebar from '../components/Sidebar';
+import ThemeToggle from '../components/ThemeToggle';
+import ProfileDropdown from '../components/ProfileDropdown';
+
 
 function DashboardPage() {
   // Import LPS donut component

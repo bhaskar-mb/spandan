@@ -16,6 +16,8 @@ import transcriptionRoutes from './routes/transcription.js'
 import transcriptRoutes from './routes/transcripts.js'
 import responseRoutes from './routes/responses.js'
 import analyticsRoutes from './routes/analytics.js'
+import questionRoute from './routes/questionRoute.js'
+import { startQuestionScheduler, stopQuestionScheduler } from './services/questionScheduler.js'
 
 // Import models for reference
 import './models/index.js'
@@ -115,7 +117,7 @@ app.use('/api/auth', authRoutes)
 app.use('/api/rooms', roomRoutes)
 app.use('/api/questions', questionRoutes)
 app.use('/api/transcription', transcriptionRoutes)
-app.use('/api/transcripts', transcriptRoutes)
+app.use('/api/question', questionRoute)
 app.use('/api/responses', responseRoutes)
 app.use('/api/analytics', analyticsRoutes)
 
@@ -187,11 +189,12 @@ io.on('connection', (socket) => {
         participantCount = memberCount
       }
       
-      io.to(roomCode).emit('room:joined', { 
-        roomCode, 
-        userId,
-        participants: participantCount 
-      })
+      io.to(roomCode).emit('room:joined', {
+  roomCode,
+  userId,
+  participants: participantCount
+});
+startQuestionScheduler(roomCode, io);
     } catch (error) {
       console.error('Error in room:join:', error)
       io.to(roomCode).emit('room:joined', { 

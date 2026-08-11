@@ -7,6 +7,7 @@ export const useSocketStore = create((set, get) => ({
   isConnected: false,
   currentRoom: null,
   participants: 0,
+  randomQuestion: null,
 
   connect: (token) => {
     const { socket: existingSocket } = get()
@@ -72,6 +73,7 @@ export const useSocketStore = create((set, get) => ({
 
     socket.on('new_question', (data) => {
       console.log('New question received:', data)
+      set({ randomQuestion: data.question || data })
     })
 
     set({ socket })
@@ -119,7 +121,11 @@ export const useSocketStore = create((set, get) => ({
     if (socket) {
       socket.emit('question:end', data)
     }
-  }
+  },
+
+  clearRandomQuestion: () => {
+    set({ randomQuestion: null })
+  },
 }))
 
 export default useSocketStore
