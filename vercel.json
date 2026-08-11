@@ -1,10 +1,9 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel-schema.json",
-  "name": "spandan",
   "version": 2,
   "builds": [
     {
-      "src": "frontend/package.json",
+      "src": "package.json",
       "use": "@vercel/static-build",
       "config": {
         "distDir": "dist"
@@ -21,9 +20,17 @@
       "dest": "backend/src/index.js"
     },
     {
+      "src": "/spandan/api/(.*)",
+      "dest": "backend/src/index.js"
+    },
+    {
+      "src": "/spandan/(.*)",
+      "dest": "/$1"
+    },
+    {
       "src": "/(.*)",
-      "dest": "frontend/dist/$1"
+      "dest": "/$1"
     }
   ],
-  "outputDirectory": "frontend/dist"
+  "outputDirectory": "dist"
 }
