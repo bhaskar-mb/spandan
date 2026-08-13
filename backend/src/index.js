@@ -40,7 +40,16 @@ import './models/index.js'
 dotenv.config()
 
 const BASE_PATH = process.env.BASE_PATH || ''
-const CORS_ORIGINS = (process.env.CORS_ORIGINS || 'http://localhost:5173,http://localhost:3001').split(',').map(s => s.trim())
+// Always allow the production domains in addition to whatever is in CORS_ORIGINS env var
+const PRODUCTION_ORIGINS = [
+  'https://spandan.fun',
+  'https://www.spandan.fun',
+  'https://spandan-lovat.vercel.app'
+]
+const CORS_ORIGINS = [
+  ...(process.env.CORS_ORIGINS || 'http://localhost:5173,http://localhost:3001').split(',').map(s => s.trim()),
+  ...PRODUCTION_ORIGINS
+]
 
 // Request timeout middleware - defined BEFORE use due to hoisting
 const requestTimeout = (req, res, next) => {
