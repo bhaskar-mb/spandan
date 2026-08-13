@@ -51,6 +51,17 @@ const CORS_ORIGINS = [
   ...PRODUCTION_ORIGINS
 ]
 
+const checkOrigin = (origin, callback) => {
+  if (!origin) return callback(null, true)
+  if (CORS_ORIGINS.includes(origin) || origin.endsWith('.vercel.app') || origin.endsWith('spandan.fun')) {
+    return callback(null, true)
+  }
+  if (origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:')) {
+    return callback(null, true)
+  }
+  callback(null, true)
+}
+
 // Request timeout middleware - defined BEFORE use due to hoisting
 const requestTimeout = (req, res, next) => {
   // Question generation calls an LLM synchronously; for long transcripts (e.g. a
@@ -80,17 +91,7 @@ const httpServer = createServer(app)
 const io = new Server(httpServer, {
   path: process.env.SOCKET_PATH || '/socket.io',
   cors: {
-    origin: (origin, callback) => {
-      // Allow requests with no origin (mobile apps, curl, Socket.IO polling)
-      if (!origin) return callback(null, true)
-      // Allow if origin is in the explicit CORS_ORIGINS list
-      if (CORS_ORIGINS.includes(origin)) return callback(null, true)
-      // Allow any localhost origin (covers localhost:5173, :8080, :3001, etc.)
-      if (origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:')) {
-        return callback(null, true)
-      }
-      callback(new Error('Not allowed by CORS'))
-    },
+    origin: checkOrigin,
     methods: ['GET', 'POST'],
     credentials: true
   }
@@ -358,7 +359,7 @@ const otpLimiter = rateLimit({
 // Middleware
 app.use(helmet())
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+  origin: checkOrigin,
   credentials: true
 }))
 app.use(express.json({ limit: '10mb' }))

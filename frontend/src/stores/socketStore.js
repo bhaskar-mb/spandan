@@ -16,25 +16,45 @@ export const useSocketStore = create((set, get) => ({
 
   connect: (token) => {
     const { socket: existingSocket } = get()
-    if (existingSocket?.connected) {
-      console.log('Socket already connected, re-authenticating if token provided')
-      if (token) {
-        existingSocket.emit('authenticate', { token })
+    if (existingSocket) {
+      if (existingSocket.connected) {
+        console.log('Socket already connected, re-authenticating if token provided')
+        if (token) {
+          existingSocket.emit('authenticate', { token })
+        }
+        set({ isConnected: true })
+        return
       }
-      set({ isConnected: true })
-      return
+      // If socket exists but is disconnected, clean up before creating a new socket instance
+      existingSocket.removeAllListeners()
+      existingSocket.disconnect()
     }
 
     const socket = io(SOCKET_URL, {
       auth: { token },
       path: SOCKET_PATH,
       transports: ['websocket', 'polling'],
-      reconnectionAttempts: 10,
-      reconnectionDelay: 1000
+      reconnection: true,
+      reconnectionAttempts: Infinity,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
+      timeout: 20000
     })
 
     socket.on('connect', () => {
       console.log('Socket connected')
+      set({ isConnected: true })
+      if (token) {
+        socket.emit('authenticate', { token })
+      }
+      const { joinedRoom } = get()
+      if (joinedRoom?.roomCode) {
+        socket.emit('room:join', { roomCode: joinedRoom.roomCode, userId: joinedRoom.userId })
+      }
+    })
+
+    socket.io.on('reconnect', (attempt) => {
+      console.log('Socket reconnected after attempt:', attempt)
       set({ isConnected: true })
       if (token) {
         socket.emit('authenticate', { token })
