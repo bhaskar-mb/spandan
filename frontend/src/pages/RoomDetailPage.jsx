@@ -1116,9 +1116,9 @@ function RoomDetailPage() {
         setGeneratedQuestions(prev => [data.question, ...prev])
 
         // Emit to students via socket
-        if (socket && isConnected) {
+        if (socket && isConnected && room?.code) {
           socket.emit('new_question', {
-            roomCode: room.code,
+            roomCode: room.code.toUpperCase(),
             question: data.question
           })
         }
@@ -1158,9 +1158,9 @@ function RoomDetailPage() {
         const data = await response.json()
         setGeneratedQuestions(prev => [data.question, ...prev])
 
-        if (socket && isConnected) {
+        if (socket && isConnected && room?.code) {
           socket.emit('new_question', {
-            roomCode: room.code,
+            roomCode: room.code.toUpperCase(),
             question: data.question
           })
         }
@@ -1206,9 +1206,9 @@ function RoomDetailPage() {
         // Emit to socket for students to receive (include roomCode)
         console.log('Emitting new_question event:', { roomCode: room.code, question: data.question })
         console.log('Socket connected:', !!socket, 'isConnected:', isConnected, 'isRoomJoined:', isRoomJoined)
-        if (socket && isConnected) {
+        if (socket && isConnected && room?.code) {
           socket.emit('new_question', {
-            roomCode: room.code,
+            roomCode: room.code.toUpperCase(),
             question: data.question
           })
           console.log('new_question event emitted successfully')
