@@ -39,7 +39,7 @@ export default defineConfig(({ mode }) => {
     root: '.',
     base,
     build: {
-      outDir: '../dist',
+      outDir: 'dist',
       emptyOutDir: true
     },
     server: {
