@@ -92,9 +92,11 @@ function StudentRoomPage() {
     if (!socket) return
 
     const handleQuestionStarted = (data) => {
-      // Normalize data: backend emits { questionId, question: sanitizedQuestion, timer, startTime } or raw question
-      const q = (data && data.question && typeof data.question === 'object') ? data.question : data
-      if (!q) return
+      let q = (data && data.question && typeof data.question === 'object') ? data.question : data
+      if (typeof q === 'string') {
+        q = { question: q, type: 'MCQ', options: [] }
+      }
+      if (!q || !q.question) return
 
       setCurrentQuestion(q)
       setSelectedOptions([])
@@ -102,7 +104,6 @@ function StudentRoomPage() {
       const tta = data.timer || q.timeToAnswer || 30
       setTimeLeft(tta)
       
-      // Clear any existing timer
       if (timerIntervalRef.current) {
         clearInterval(timerIntervalRef.current)
         timerIntervalRef.current = null
@@ -113,7 +114,6 @@ function StudentRoomPage() {
           if (prev <= 1) {
             clearInterval(timerIntervalRef.current)
             timerIntervalRef.current = null
-            // Time expired - refresh from MongoDB only if room/user available
             if (room?._id && user?._id) {
               fetchPastResponses(room._id, user._id)
             }
@@ -126,13 +126,11 @@ function StudentRoomPage() {
     }
 
     const handleQuestionEnded = (data) => {
-      // Clear timer if running
       if (timerIntervalRef.current) {
         clearInterval(timerIntervalRef.current)
         timerIntervalRef.current = null
       }
       
-      // Only fetch if room and user are available
       if (room?._id && user?._id) {
         fetchPastResponses(room._id, user._id)
       }
@@ -141,11 +139,12 @@ function StudentRoomPage() {
     }
 
     const handleNewQuestion = (data) => {
-      // Handle manually created or approved questions from teacher
-      const q = (data && data.question && typeof data.question === 'object') ? data.question : data
-      if (!q) return
+      let q = (data && data.question && typeof data.question === 'object') ? data.question : data
+      if (typeof q === 'string') {
+        q = { question: q, type: 'MCQ', options: [] }
+      }
+      if (!q || !q.question) return
 
-      // Clear any existing timer
       if (timerIntervalRef.current) {
         clearInterval(timerIntervalRef.current)
         timerIntervalRef.current = null
@@ -162,7 +161,6 @@ function StudentRoomPage() {
           if (prev <= 1) {
             clearInterval(timerIntervalRef.current)
             timerIntervalRef.current = null
-            // Time expired - refresh from MongoDB only if room/user available
             if (room?._id && user?._id) {
               fetchPastResponses(room._id, user._id)
             }
@@ -200,8 +198,6 @@ function StudentRoomPage() {
     socket.on('video:resume', handleVideoResume)
     socket.on('connect', handleReconnect)
     socket.on('room:ended', () => {
-      // Show the interstitial immediately, but stagger the actual navigation across a jitter window
-      // so all students don't hit the results endpoints in the same instant.
       setSessionEnded(true)
       const delay = Math.random() * RESULTS_NAV_JITTER_MS
       resultsNavTimerRef.current = setTimeout(() => {
@@ -228,11 +224,9 @@ function StudentRoomPage() {
       const roomData = await joinRoomByCode(roomCode)
       setRoom(roomData)
       if (user?._id && socket) {
-        // Join via socket - room:joined confirms the student was added to RoomMember
         return new Promise((resolve, reject) => {
           const timeout = setTimeout(() => {
             socket.off('room:joined', handleRoomJoined)
-            // Still fetch even if timeout - RoomMember should already exist from HTTP join
             fetchPastResponses(roomData._id, user._id)
             resolve()
           }, 3000)
@@ -257,7 +251,6 @@ function StudentRoomPage() {
   }
   
   const fetchPastResponses = async (roomId, studentId) => {
-    // Defensive: don't call if room or user not ready
     if (!roomId || !studentId) {
       console.warn('fetchPastResponses skipped: missing roomId or studentId', { roomId, studentId })
       return
@@ -276,9 +269,15 @@ function StudentRoomPage() {
       const data = await response.json()
       if (data.success && data.questions) {
         setPastResponses(data.questions)
-        // If student has already answered polls, disable leave button
         if (data.questions.some(q => q.answered)) {
           setHasAnsweredPoll(true)
+        }
+
+        // Recover live active question if student joined mid-poll or reloaded
+        const liveQ = data.questions.find(q => q.resultPending && !q.answered)
+        if (liveQ && !currentQuestion) {
+          console.log('[StudentRoom] Recovering active live poll on load/refresh:', liveQ)
+          handleNewQuestion(liveQ)
         }
       }
     } catch (err) {
@@ -497,8 +496,20 @@ function StudentRoomPage() {
                 borderRadius: '50%',
                 background: isConnected ? '#10b981' : '#ef4444'
               }} />
-              <span style={{ color: 'var(--text-primary)', fontSize: '14px', fontWeight: '500' }}>
-                {isConnected ? 'Connected' : 'Reconnecting...'}
+              <span 
+                onClick={() => {
+                  if (!isConnected && token) {
+                    useSocketStore.getState().connect(token)
+                  }
+                }}
+                style={{ 
+                  color: 'var(--text-primary)', 
+                  fontSize: '14px', 
+                  fontWeight: '500',
+                  cursor: isConnected ? 'default' : 'pointer'
+                }}
+              >
+                {isConnected ? 'Connected' : 'Reconnecting... (Click to Retry)'}
               </span>
             </div>
             <button

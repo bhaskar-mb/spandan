@@ -12,7 +12,7 @@ export default defineConfig(({ mode }) => {
   const rawBase = ('VITE_BASE_PATH' in process.env) ? process.env.VITE_BASE_PATH : (env.VITE_BASE_PATH || '')
   const formattedBasePath = rawBase ? '/' + rawBase.replace(/^\//, '').replace(/\/+$/, '') : ''
 
-  const base = formattedBasePath ? formattedBasePath + '/' : './'
+  const base = formattedBasePath ? formattedBasePath + '/' : '/'
 
   const apiPath = formattedBasePath ? formattedBasePath + '/api' : '/api'
   const socketPath = formattedBasePath ? formattedBasePath + '/socket.io' : '/socket.io'

@@ -17,44 +17,52 @@ export const useSocketStore = create((set, get) => ({
   connect: (token) => {
     const { socket: existingSocket } = get()
     if (existingSocket?.connected) {
-      console.log('Socket already connected, skipping')
+      console.log('Socket already connected, re-authenticating if token provided')
+      if (token) {
+        existingSocket.emit('authenticate', { token })
+      }
+      set({ isConnected: true })
       return
     }
 
     const socket = io(SOCKET_URL, {
       auth: { token },
       path: SOCKET_PATH,
-      transports: ['websocket', 'polling']
+      transports: ['websocket', 'polling'],
+      reconnectionAttempts: 10,
+      reconnectionDelay: 1000
     })
 
     socket.on('connect', () => {
       console.log('Socket connected')
       set({ isConnected: true })
-      socket.emit('authenticate', { token })
-      // On a (re)connect, socket.io gives us a NEW underlying connection that is a member of NO
-      // rooms — even if we had joined one before the drop. Without this, a student whose socket
-      // briefly reconnects silently stops receiving room broadcasts (new_question, leaderboard…)
-      // until they manually refresh the page. Re-join the room we were in so delivery self-heals.
+      if (token) {
+        socket.emit('authenticate', { token })
+      }
       const { joinedRoom } = get()
       if (joinedRoom?.roomCode) {
         socket.emit('room:join', { roomCode: joinedRoom.roomCode, userId: joinedRoom.userId })
       }
     })
 
-    socket.on('disconnect', () => {
-      console.log('Socket disconnected')
-      set({ isConnected: false, currentRoom: null })
+    socket.on('disconnect', (reason) => {
+      console.log('Socket disconnected:', reason)
+      set({ isConnected: false })
+    })
+
+    socket.on('connect_error', (error) => {
+      console.error('Socket connection error:', error?.message || error)
+      set({ isConnected: false })
     })
 
     socket.on('authenticated', (data) => {
       if (!data.success) {
         console.error('Socket authentication failed:', data.error)
-        // A token that expired mid-session fails socket re-auth too (server sends expired:true). Treat
-        // it like an HTTP 401 so the user is sent to re-login instead of sitting on a silently
-        // unauthenticated socket that still shows polls but can't submit answers.
         if (data.expired) {
           useAuthStore.getState().handleSessionExpired()
         }
+      } else {
+        set({ isConnected: true })
       }
     })
 
@@ -92,7 +100,13 @@ export const useSocketStore = create((set, get) => ({
 
     socket.on('new_question', (data) => {
       console.log('New question received:', data)
-      set({ randomQuestion: data.question || data })
+      // Extract structured question object if nested, or build standard object if raw text
+      const qObj = (data && data.question && typeof data.question === 'object')
+        ? data.question
+        : ((data && typeof data === 'object' && data.question)
+          ? data
+          : (typeof data === 'string' ? { question: data, type: 'MCQ', options: [] } : data))
+      set({ randomQuestion: qObj })
     })
 
     set({ socket })
