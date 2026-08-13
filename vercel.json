@@ -1,7 +1,7 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel-schema.json",
   "installCommand": "npm install",
-  "buildCommand": "VITE_BASE_PATH= npm run build",
+  "buildCommand": "VITE_BASE_PATH= VITE_SOCKET_URL=https://spandan.fun npm run build",
   "outputDirectory": "dist",
   "functions": {
     "api/index.js": {
