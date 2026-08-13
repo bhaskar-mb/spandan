@@ -88,41 +88,45 @@ function StudentRoomPage() {
 
 
 
+  const handleQuestionPayload = (data) => {
+    let q = (data && data.question && typeof data.question === 'object') ? data.question : data
+    if (typeof q === 'string') {
+      q = { question: q, type: 'MCQ', options: [] }
+    }
+    if (!q || (!q.question && !q._id)) return
+
+    if (timerIntervalRef.current) {
+      clearInterval(timerIntervalRef.current)
+      timerIntervalRef.current = null
+    }
+
+    setCurrentQuestion(q)
+    setSelectedOptions([])
+    setSubmitted(false)
+    const tta = data.timer || q.timeToAnswer || 30
+    setTimeLeft(tta)
+
+    timerIntervalRef.current = setInterval(() => {
+      setTimeLeft(prev => {
+        if (prev <= 1) {
+          clearInterval(timerIntervalRef.current)
+          timerIntervalRef.current = null
+          if (room?._id && user?._id) {
+            fetchPastResponses(room._id, user._id)
+          }
+          setCurrentQuestion(null)
+          return 0
+        }
+        return prev - 1
+      })
+    }, 1000)
+  }
+
   useEffect(() => {
     if (!socket) return
 
     const handleQuestionStarted = (data) => {
-      let q = (data && data.question && typeof data.question === 'object') ? data.question : data
-      if (typeof q === 'string') {
-        q = { question: q, type: 'MCQ', options: [] }
-      }
-      if (!q || !q.question) return
-
-      setCurrentQuestion(q)
-      setSelectedOptions([])
-      setSubmitted(false)
-      const tta = data.timer || q.timeToAnswer || 30
-      setTimeLeft(tta)
-      
-      if (timerIntervalRef.current) {
-        clearInterval(timerIntervalRef.current)
-        timerIntervalRef.current = null
-      }
-      
-      timerIntervalRef.current = setInterval(() => {
-        setTimeLeft(prev => {
-          if (prev <= 1) {
-            clearInterval(timerIntervalRef.current)
-            timerIntervalRef.current = null
-            if (room?._id && user?._id) {
-              fetchPastResponses(room._id, user._id)
-            }
-            setCurrentQuestion(null)
-            return 0
-          }
-          return prev - 1
-        })
-      }, 1000)
+      handleQuestionPayload(data)
     }
 
     const handleQuestionEnded = (data) => {
@@ -139,37 +143,7 @@ function StudentRoomPage() {
     }
 
     const handleNewQuestion = (data) => {
-      let q = (data && data.question && typeof data.question === 'object') ? data.question : data
-      if (typeof q === 'string') {
-        q = { question: q, type: 'MCQ', options: [] }
-      }
-      if (!q || !q.question) return
-
-      if (timerIntervalRef.current) {
-        clearInterval(timerIntervalRef.current)
-        timerIntervalRef.current = null
-      }
-      
-      setCurrentQuestion(q)
-      setSelectedOptions([])
-      setSubmitted(false)
-      const tta = data.timer || q.timeToAnswer || 30
-      setTimeLeft(tta)
-      
-      timerIntervalRef.current = setInterval(() => {
-        setTimeLeft(prev => {
-          if (prev <= 1) {
-            clearInterval(timerIntervalRef.current)
-            timerIntervalRef.current = null
-            if (room?._id && user?._id) {
-              fetchPastResponses(room._id, user._id)
-            }
-            setCurrentQuestion(null)
-            return 0
-          }
-          return prev - 1
-        })
-      }, 1000)
+      handleQuestionPayload(data)
     }
 
     // Self-heal after a socket reconnect: the store re-joins the room automatically, but a
@@ -275,9 +249,9 @@ function StudentRoomPage() {
 
         // Recover live active question if student joined mid-poll or reloaded
         const liveQ = data.questions.find(q => q.resultPending && !q.answered)
-        if (liveQ && !currentQuestion) {
+        if (liveQ) {
           console.log('[StudentRoom] Recovering active live poll on load/refresh:', liveQ)
-          handleNewQuestion(liveQ)
+          handleQuestionPayload(liveQ)
         }
       }
     } catch (err) {
